@@ -5,6 +5,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#18332d">
   <title>像素 UPC · 唐岛湾漫游</title>
+  <style>
+    #startup-error {
+      box-sizing: border-box;
+      max-width: 36rem;
+      margin: 12vh auto;
+      padding: 1.5rem;
+      border: 1px solid #b5c4b5;
+      border-radius: 12px;
+      background: #f2f5ec;
+      color: #20392e;
+      font: 16px/1.6 system-ui, sans-serif;
+    }
+    #startup-error h1 { margin: 0 0 0.75rem; font-size: 1.35rem; }
+    #startup-error p { margin: 0.5rem 0; }
+  </style>
+  <script>
+    (() => {
+      let failed = false;
+      function showStartupError() {
+        const message = document.getElementById('startup-error');
+        if (!failed || !message) return;
+        document.querySelector('.explorer').hidden = true;
+        message.hidden = false;
+      }
+
+      window.addEventListener('error', event => {
+        const target = event.target;
+        const failedScript = target instanceof HTMLScriptElement && target.hasAttribute('src');
+        const failedStylesheet = target instanceof HTMLLinkElement && target.rel === 'stylesheet';
+        if (!failedScript && !failedStylesheet) return;
+        failed = true;
+        showStartupError();
+      }, true);
+      document.addEventListener('DOMContentLoaded', showStartupError, { once: true });
+    })();
+  </script>
   <link rel="stylesheet" href="style.css">
   <script defer src="campus.js"></script>
   <script defer src="campus-view.js"></script>
@@ -20,6 +56,11 @@
   <script defer src="game.js"></script>
 </head>
 <body>
+  <section id="startup-error" role="alert" hidden>
+    <h1>游戏文件没有加载完整</h1>
+    <p>如果你是从 ZIP 压缩包内打开的，请关闭此页，先选择「全部解压」，再打开解压后文件夹里的 <code>index.html</code>。</p>
+    <p>请将 <code>index.html</code>、<code>style.css</code> 和所有 <code>.js</code> 文件保留在同一个文件夹。</p>
+  </section>
   <main class="explorer" aria-label="唐岛湾校区自由漫游">
     <canvas id="scene" width="720" height="450" aria-label="中国石油大学（华东）唐岛湾校区漫游画面">请使用支持 Canvas 的浏览器打开漫游。</canvas>
 
