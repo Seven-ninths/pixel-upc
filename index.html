@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#18332d">
+  <title>像素 UPC · 唐岛湾漫游</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="campus.js"></script>
+  <script defer src="campus-view.js"></script>
+  <script defer src="landmarks.js"></script>
+  <script defer src="navigation.js"></script>
+  <script defer src="activities.js"></script>
+  <script defer src="life.js"></script>
+  <script defer src="lecture-content.js"></script>
+  <script defer src="student.js"></script>
+  <script defer src="social.js"></script>
+  <script defer src="student-ui.js"></script>
+  <script defer src="render.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <main class="explorer" aria-label="唐岛湾校区自由漫游">
+    <canvas id="scene" width="720" height="450" aria-label="中国石油大学（华东）唐岛湾校区漫游画面">请使用支持 Canvas 的浏览器打开漫游。</canvas>
+
+    <header class="top-bar">
+      <div class="location hud-surface">
+        <h1>像素 UPC <span aria-hidden="true">·</span> 唐岛湾</h1>
+        <p><span class="location-pin" aria-hidden="true"></span><span class="visually-hidden">附近地标：</span><span id="location-name">南门</span></p>
+      </div>
+      <nav class="actions" aria-label="漫游工具">
+        <button id="student-open" type="button" aria-haspopup="dialog" aria-controls="student-dialog">学生手册</button>
+        <button id="map-toggle" type="button" aria-haspopup="dialog" aria-controls="map-dialog">地图 <kbd aria-hidden="true">M</kbd></button>
+        <button id="photo-open" type="button" aria-haspopup="dialog" aria-controls="photo-dialog">明信片 <kbd aria-hidden="true">P</kbd></button>
+        <button id="reset" type="button">回南门 <kbd aria-hidden="true">R</kbd></button>
+        <button id="fullscreen-button" type="button" aria-label="进入全屏" aria-pressed="false"><span data-fullscreen-label>全屏</span> <kbd aria-hidden="true">F</kbd></button>
+        <button id="help-open" type="button" aria-haspopup="dialog" aria-controls="help-dialog" aria-label="操作指南">指南</button>
+      </nav>
+    </header>
+
+    <section class="campus-dock" aria-label="校园位置与探索进度">
+      <details id="mini-panel" class="campus-panel hud-surface" open>
+        <summary><span>小地图</span><span id="mini-region" class="panel-meta"></span></summary>
+        <canvas id="mini-map" width="160" height="115" aria-label="附近校园小地图"></canvas>
+        <p id="mini-position" class="mini-position"></p>
+      </details>
+      <details id="explore-panel" class="campus-panel hud-surface">
+        <summary><span>探索</span><span id="progress-count" class="panel-meta">0/5</span></summary>
+        <dl class="explore-stats">
+          <div><dt>校园猫</dt><dd id="cat-count">0/5</dd></div>
+          <div><dt>光华大道</dt><dd id="axis-distance">0 / 120 米</dd></div>
+        </dl>
+        <ul id="campus-checklist" aria-label="校园探索记录"></ul>
+      </details>
+      <details id="student-vitals" class="campus-panel hud-surface" open hidden>
+        <summary><span>生活状态</span><span id="student-day" class="panel-meta"></span></summary>
+        <p id="student-next-class" class="mini-position" aria-live="polite"></p>
+        <dl id="student-metrics" class="explore-stats"></dl>
+      </details>
+    </section>
+
+    <section class="campus-state hud-surface" aria-label="校园时间与季节">
+      <div class="clock-row">
+        <time id="clock-time">08:43</time>
+        <span id="clock-phase" class="panel-meta">上课</span>
+      </div>
+      <select id="clock-jump" aria-label="选择模拟时段">
+        <option value="">模拟时段</option>
+        <option value="523">08:43 上课</option>
+        <option value="526">08:46 小课间</option>
+        <option value="576">09:36 大课间</option>
+        <option value="750">12:30 午间</option>
+        <option value="1056">17:36 傍晚</option>
+      </select>
+      <div class="seasons" role="group" aria-label="切换季节">
+        <button type="button" data-season="spring" aria-pressed="false" aria-label="春季">春</button>
+        <button type="button" data-season="summer" aria-pressed="true" aria-label="夏季">夏</button>
+        <button type="button" data-season="autumn" aria-pressed="false" aria-label="秋季">秋</button>
+        <button type="button" data-season="winter" aria-pressed="false" aria-label="冬季">冬</button>
+      </div>
+      <div id="student-clock-controls" class="student-clock-controls" hidden>
+        <button id="student-clock-pause" type="button" aria-pressed="false">暂停</button>
+        <select id="student-clock-speed" aria-label="校园时间倍速">
+          <option value="0.5">0.5×</option>
+          <option value="1" selected>1×</option>
+          <option value="2">2×</option>
+        </select>
+      </div>
+    </section>
+
+    <aside id="landmark-card" class="landmark-card hud-surface" aria-labelledby="landmark-name" hidden>
+      <div class="landmark-heading">
+        <h2 id="landmark-name"></h2>
+        <button id="landmark-close" class="compact-button" type="button" aria-label="收起地标介绍">×</button>
+      </div>
+      <div id="landmark-content" class="landmark-content" role="region" aria-label="地标详细内容" tabindex="0">
+        <figure class="landmark-media">
+          <img id="landmark-image" alt="" decoding="async" hidden>
+          <figcaption><a id="landmark-image-credit" target="_blank" rel="noopener" hidden></a></figcaption>
+          <p id="landmark-image-fallback" class="landmark-image-fallback" hidden>图片暂不可查看。</p>
+        </figure>
+        <p id="landmark-summary"></p>
+        <div id="landmark-details"></div>
+        <div id="landmark-sources" class="landmark-sources" aria-label="地标资料"></div>
+      </div>
+      <button id="landmark-student-action" class="compact-button" type="button" hidden>校园活动</button>
+    </aside>
+    <div id="walk-bar" class="walk-bar hud-surface" hidden>
+      <span id="walk-destination"></span>
+      <button id="walk-stop" class="compact-button" type="button">停止</button>
+    </div>
+
+    <div class="bottom-bar">
+      <p class="help hud-surface"><kbd>WASD</kbd> 或方向键漫游 <span class="divider" aria-hidden="true"></span> <kbd>Shift</kbd> 加速</p>
+      <div id="joystick" class="joystick" aria-label="漫游方向摇杆" role="group">
+        <span id="joystick-thumb" class="joystick-thumb" aria-hidden="true"></span>
+      </div>
+      <p id="status" class="status hud-surface" role="status" aria-live="polite" aria-atomic="true"></p>
+    </div>
+    <button id="interact-button" type="button"><span id="interact-label">互动</span><kbd aria-hidden="true">E</kbd></button>
+    <a class="map-credit hud-surface" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap 贡献者</a>
+  </main>
+
+  <dialog id="map-dialog" class="map-dialog" aria-labelledby="map-heading">
+    <header class="dialog-header">
+      <div class="map-title">
+        <h2 id="map-heading"><span class="visually-hidden">唐岛湾</span>校区地图</h2>
+        <p class="map-orientation">校区主轴朝上</p>
+      </div>
+      <div class="map-controls" role="group" aria-label="地图查看工具">
+        <button id="zoom-out" class="map-zoom" type="button" aria-label="缩小地图" title="缩小地图">−</button>
+        <button id="zoom-in" class="map-zoom" type="button" aria-label="放大地图" title="放大地图">+</button>
+        <button id="zoom-reset" type="button" aria-label="地图复位至适应窗口" title="适应窗口">适应<span class="fit-tail">窗口</span></button>
+        <button id="map-close" type="button" autofocus>关闭 <kbd aria-hidden="true">Esc</kbd></button>
+      </div>
+    </header>
+    <div id="map-viewport">
+      <canvas id="full-map" width="640" height="520" tabindex="0" aria-label="校区主轴朝上的唐岛湾校区全览地图" aria-describedby="map-hint">请使用支持 Canvas 的浏览器查看地图。</canvas>
+    </div>
+    <footer class="map-footer">
+      <div class="map-navigation">
+        <label for="landmark-select">地标</label>
+        <select id="landmark-select">
+          <option value="">选择地标</option>
+        </select>
+        <button id="walk-start" type="button" disabled>沿路前往</button>
+        <button id="map-teleport" type="button" disabled>传送至此</button>
+        <p id="map-route-message" role="status"></p>
+      </div>
+      <div class="map-meta">
+        <p id="map-hint" class="map-hint"><span class="wheel-hint">滚轮缩放 · </span>拖动平移 · 点选位置</p>
+        <div id="sources" class="sources" aria-label="地图来源">
+          <a href="https://csun.upc.edu.cn/2026/0825/c4439a498586/page.htm" target="_blank" rel="noopener noreferrer">校方地图来源 ↗</a>
+        </div>
+      </div>
+    </footer>
+  </dialog>
+
+  <dialog id="student-dialog" class="activity-dialog student-dialog" aria-labelledby="student-title">
+    <header class="dialog-header">
+      <h2 id="student-title">学生手册</h2>
+      <button id="student-close" type="button">关闭 <kbd aria-hidden="true">Esc</kbd></button>
+    </header>
+    <nav id="student-tabs" class="student-tabs" aria-label="学生手册栏目" hidden></nav>
+    <div id="student-content" class="student-content"></div>
+    <p id="student-feedback" class="student-feedback" role="status" aria-live="polite"></p>
+  </dialog>
+
+  <dialog id="chat-dialog" class="activity-dialog" aria-labelledby="chat-title">
+    <header class="dialog-header">
+      <h2 id="chat-title"></h2>
+      <button id="chat-close" type="button" autofocus>关闭 <kbd aria-hidden="true">Esc</kbd></button>
+    </header>
+    <p id="chat-text" class="chat-text" aria-live="polite"></p>
+    <div id="chat-options" class="chat-options" aria-label="聊天话题"></div>
+  </dialog>
+
+  <dialog id="photo-dialog" class="activity-dialog postcard-dialog" aria-labelledby="photo-title">
+    <header class="dialog-header">
+      <h2 id="photo-title">唐岛湾明信片</h2>
+      <button id="photo-close" type="button" autofocus>关闭 <kbd aria-hidden="true">Esc</kbd></button>
+    </header>
+    <img id="photo-preview" class="photo-preview" alt="当前校园画面的明信片预览">
+    <footer class="postcard-actions">
+      <a id="photo-save" class="photo-save" download>保存 PNG</a>
+    </footer>
+  </dialog>
+
+  <dialog id="help-dialog" class="activity-dialog" aria-labelledby="help-title">
+    <header class="dialog-header">
+      <h2 id="help-title">漫游指南</h2>
+      <button id="help-close" type="button" autofocus>关闭 <kbd aria-hidden="true">Esc</kbd></button>
+    </header>
+    <dl class="help-keys">
+      <div><dt><kbd>WASD</kbd> <kbd>↑↓←→</kbd></dt><dd>移动。手机上拖动左下角摇杆。</dd></div>
+      <div><dt><kbd>Shift</kbd></dt><dd>加速。手机上把摇杆推向边缘。</dd></div>
+      <div><dt><kbd>E</kbd></dt><dd>走近地标后打开右侧介绍。也可在南门报到、找猫或和同学聊天。</dd></div>
+      <div><dt><kbd>P</kbd></dt><dd>用眼前的校园画面制作明信片。</dd></div>
+      <div><dt><kbd>M</kbd></dt><dd>在地图上选点，沿路走过去或直接传送。</dd></div>
+      <div><dt><kbd>R</kbd></dt><dd>回到南门。</dd></div>
+      <div><dt><kbd>F</kbd></dt><dd>进入或退出全屏。</dd></div>
+    </dl>
+    <p class="help-note">可从「学生手册」开始学生生活，查看课表、课程和生活状态。课间走动的同学会更多。</p>
+  </dialog>
+
+  <noscript><p class="script-message hud-surface">请启用 JavaScript 以在校园里自由漫游。</p></noscript>
+</body>
+</html>
